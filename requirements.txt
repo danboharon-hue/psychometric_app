@@ -1,0 +1,6 @@
+Flask
+PyMuPDF
+openpyxl
+nltk
+gunicorn
+flask-cloudflared
