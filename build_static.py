@@ -1,10 +1,17 @@
 # -*- coding: utf-8 -*-
-"""Generates a single self-contained index.html with all PDFs embedded as base64."""
-import base64, os, re, sys
-sys.stdout.reconfigure(encoding='utf-8')
+"""Generate a self-contained static site with all PDFs embedded as base64."""
+import base64
+import os
+import re
+import sys
+from pathlib import Path
 
-PRELOADED = r"C:\Users\דן\pdf_translator\preloaded"
-OUT       = r"C:\Users\דן\pdf_translator\index.html"
+sys.stdout.reconfigure(encoding="utf-8")
+
+BASE_DIR = Path(__file__).resolve().parent
+PRELOADED = BASE_DIR / "preloaded"
+DOCS_DIR = BASE_DIR / "docs"
+OUT = DOCS_DIR / "index.html"
 
 SEASON_ORDER = {'אביב': 1, 'קיץ': 2, 'סתיו': 3, 'חורף': 4}
 
@@ -15,13 +22,15 @@ def sort_key(name):
         return (-year, SEASON_ORDER.get(season, 99), part)
     return (9999, 99, 99)
 
-pdfs = sorted([f for f in os.listdir(PRELOADED) if f.endswith('.pdf')], key=sort_key)
+DOCS_DIR.mkdir(exist_ok=True)
+
+pdfs = sorted([f for f in os.listdir(PRELOADED) if f.endswith(".pdf")], key=sort_key)
 
 # Encode each PDF as base64 data URI
 pdf_data = {}
 for name in pdfs:
-    with open(os.path.join(PRELOADED, name), 'rb') as f:
-        b64 = base64.b64encode(f.read()).decode('ascii')
+    with open(PRELOADED / name, "rb") as f:
+        b64 = base64.b64encode(f.read()).decode("ascii")
     pdf_data[name] = f"data:application/pdf;base64,{b64}"
 
 # Build PDF list items HTML
@@ -338,7 +347,7 @@ function goBack() {{
 </body>
 </html>'''
 
-with open(OUT, 'w', encoding='utf-8') as f:
+with open(OUT, "w", encoding="utf-8") as f:
     f.write(html)
 
 size_mb = os.path.getsize(OUT) / 1024 / 1024
