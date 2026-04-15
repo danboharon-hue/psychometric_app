@@ -10,9 +10,6 @@ import openpyxl
 import nltk
 from nltk.stem import WordNetLemmatizer
 
-for pkg in ['wordnet', 'averaged_perceptron_tagger_eng', 'punkt_tab']:
-    nltk.download(pkg, quiet=True)
-
 app = Flask(__name__)
 BASE_DIR      = Path(__file__).parent
 UPLOAD_DIR    = BASE_DIR / "uploads"
@@ -51,7 +48,26 @@ WORD_LISTS = load_word_lists()
 
 # ── NLP helpers ───────────────────────────────────────────────────────────────
 
-_lem = WordNetLemmatizer()
+def _has_nltk_resource(path):
+    try:
+        nltk.data.find(path)
+        return True
+    except LookupError:
+        return False
+
+
+_HAS_WORDNET = _has_nltk_resource("corpora/wordnet")
+_HAS_PUNKT = _has_nltk_resource("tokenizers/punkt") or _has_nltk_resource("tokenizers/punkt_tab")
+_lem = WordNetLemmatizer() if _HAS_WORDNET else None
+
+
+def _sentences(text):
+    if _HAS_PUNKT:
+        try:
+            return nltk.sent_tokenize(text)
+        except LookupError:
+            pass
+    return [s for s in re.split(r'(?<=[.!?])\s+|\n+', text) if s.strip()]
 
 # צורות לא-סדירות של מילים הנמצאות ברשימה כ-lemma
 _IRREGULAR = {
@@ -138,10 +154,14 @@ def find_match(word, word_dict):
         return w
 
     # 3. NLTK lemmatizer for all POS
-    for pos in ['v', 'n', 'a', 'r']:
-        lemma = _lem.lemmatize(w, pos)
-        if lemma in word_dict:
-            return lemma
+    if _lem is not None:
+        for pos in ['v', 'n', 'a', 'r']:
+            try:
+                lemma = _lem.lemmatize(w, pos)
+            except LookupError:
+                lemma = None
+            if lemma in word_dict:
+                return lemma
 
     # 4. Manual suffix stripping for edge cases
     for suffix, replace in [('ness',''), ('ment',''), ('tion','te'), ('tion',''),
@@ -211,7 +231,7 @@ def process_pdf(pdf_path, word_dict, output_path, mode="above"):
 
         sentence_starters = set()
         try:
-            for sent in nltk.sent_tokenize(page_text):
+            for sent in _sentences(page_text):
                 toks = sent.split()
                 if toks:
                     sentence_starters.add(toks[0].lower())

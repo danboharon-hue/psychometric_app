@@ -1,7 +1,9 @@
+import os
+
 from flask_cloudflared import run_with_cloudflared
-import sys
-sys.path.insert(0, r"C:\Users\דן\pdf_translator")
+
 from app import app
 
+
 run_with_cloudflared(app)
-app.run(port=5055, debug=False)
+app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "5055")), debug=False)
